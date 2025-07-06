@@ -1,0 +1,62 @@
+name: CI
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+    branches: [ main, master ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        go-version: [1.21, 1.22]
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Set up Go ${{ matrix.go-version }}
+      uses: actions/setup-go@v4
+      with:
+        go-version: ${{ matrix.go-version }}
+
+    - name: Cache Go modules
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cache/go-build
+          ~/go/pkg/mod
+        key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+        restore-keys: |
+          ${{ runner.os }}-go-
+
+    - name: Build and test module a
+      run: |
+        cd a
+        go mod tidy
+        go build
+        go test ./...
+
+    - name: Build and test module b
+      run: |
+        cd b
+        go mod tidy
+        go build
+        go test ./...
+
+    - name: Build and test root
+      run: |
+        go mod tidy
+        go build
+        go test ./...
+
+    - name: Verify dependencies
+      run: |
+        echo "Checking module a dependencies:"
+        cd a && go list -m all
+        echo "Checking module b dependencies:"
+        cd b && go list -m all
+        echo "Checking root dependencies:"
+        go list -m all
